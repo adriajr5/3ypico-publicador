@@ -1,0 +1,32 @@
+name: Publicar en Instagram
+on:
+  schedule:
+    - cron: "0 11 * * *"   # post 1 del dia (13:00 Madrid en horario de verano, 12:00 en invierno)
+    - cron: "0 18 * * *"   # post 2 del dia (20:00 / 19:00 Madrid)
+  workflow_dispatch:
+    inputs:
+      slot: { description: "Post del dia (1 o 2)", default: "1" }
+      fecha: { description: "Fecha AAAA-MM-DD (vacio = hoy)", default: "" }
+      prueba: { description: "Probar sin publicar (1 = si)", default: "1" }
+permissions:
+  contents: write
+concurrency: publicar
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publicar
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          SLOT: ${{ github.event_name == 'workflow_dispatch' && inputs.slot || (github.event.schedule == '0 11 * * *' && '1' || '2') }}
+          FECHA: ${{ github.event_name == 'workflow_dispatch' && inputs.fecha || '' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.prueba || '' }}
+        run: python3 publicar.py
+      - name: Guardar lo publicado
+        run: |
+          if [ -n "$(git status --porcelain publicados.json)" ]; then
+            git config user.name "publicador"; git config user.email "publicador@users.noreply.github.com"
+            git add publicados.json; git commit -m "Registro de publicados"; git pull --rebase -q; git push
+          fi
