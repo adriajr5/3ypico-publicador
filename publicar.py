@@ -7,8 +7,10 @@ from zoneinfo import ZoneInfo
 
 API = "https://graph.instagram.com/v21.0"
 BASE_FOTOS = "https://adriajr5.github.io/3ypico-publicador/"
-TOKEN = os.environ.get("IG_TOKEN", "")
-UID = os.environ.get("IG_USER_ID", "")
+TOKEN = os.environ.get("IG_TOKEN", "").strip()
+UID = os.environ.get("IG_USER_ID", "").strip() or "me"
+if not TOKEN and os.environ.get("DRY_RUN") != "1":
+    sys.exit("Falta el secreto IG_TOKEN (Settings > Secrets and variables > Actions > Repository secrets).")
 DRY = os.environ.get("DRY_RUN") == "1"
 SLOT = int(os.environ.get("SLOT") or 1)
 HOY = os.environ.get("FECHA") or datetime.now(ZoneInfo("Europe/Madrid")).strftime("%Y-%m-%d")
