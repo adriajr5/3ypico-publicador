@@ -1,0 +1,32 @@
+name: Subir borradores a TikTok
+on:
+  schedule:
+    - cron: "5 11 * * *"
+    - cron: "5 18 * * *"
+  workflow_dispatch:
+    inputs:
+      slot: { description: "Post del dia (1 o 2)", default: "1" }
+      fecha: { description: "Fecha AAAA-MM-DD (vacio = hoy)", default: "" }
+      prueba: { description: "Probar sin subir (1 = si)", default: "1" }
+permissions:
+  contents: write
+concurrency: publicar-tiktok
+jobs:
+  subir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Subir borrador
+        env:
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          TIKTOK_STATE_KEY: ${{ secrets.TIKTOK_STATE_KEY }}
+          SLOT: ${{ github.event_name == 'workflow_dispatch' && inputs.slot || (github.event.schedule == '5 11 * * *' && '1' || '2') }}
+          FECHA: ${{ github.event_name == 'workflow_dispatch' && inputs.fecha || '' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.prueba || '' }}
+        run: python3 tiktok.py post
+      - name: Guardar estado
+        run: |
+          git config user.name "publicador"; git config user.email "publicador@users.noreply.github.com"
+          git add -f tiktok_token.enc publicados_tiktok.json 2>/dev/null
+          if ! git diff --cached --quiet; then git commit -m "Estado de TikTok"; git pull --rebase -q; git push; fi
